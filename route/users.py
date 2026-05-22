@@ -7,7 +7,6 @@ from schemas import UserCreate,  UserResponse, UserUpdate
 from sqlalchemy.orm import Session
 from dependencies.auth import get_current_user
 
-
 router = APIRouter()
 security = HTTPBearer()
 
@@ -35,7 +34,9 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(
         name=user.name,
         email=user.email,
-        password=pwd_context.hash(user.password)
+        password=pwd_context.hash(user.password),
+         role = user.role
+
     )
 
     db.add(new_user)
@@ -83,13 +84,16 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin can delete users"
+        )
     user = db.query(User).filter(User.id == user_id).first()
-
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
     db.delete(user)
     db.commit()
     return {"status": "success", "message": "User deleted"}

@@ -35,7 +35,6 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         name=user.name,
         email=user.email,
         password=pwd_context.hash(user.password),
-        role=user.role
     )
 
     db.add(new_user)
