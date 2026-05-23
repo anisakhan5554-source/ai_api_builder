@@ -33,12 +33,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded,_rate_limit_exceeded_handler)
 
 Base.metadata.create_all(bind=engine)
 
-app.include_router(users_router, prefix="/api")
-app.include_router(auth_router, prefix="/api")
+app.include_router(users_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
 
 @app.get("/")
 def root():

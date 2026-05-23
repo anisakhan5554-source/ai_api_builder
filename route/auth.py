@@ -13,7 +13,7 @@ from core.limiter import limiter
 from sqlalchemy.orm import Session
 
 
-router = APIRouter()
+router = APIRouter(tags=["Auth"])
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto"
