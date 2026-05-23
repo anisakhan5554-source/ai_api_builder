@@ -1,1 +1,3 @@
 SECRET_KEY=my_super_secret_key_123
+
+DATABASE_URL=postgresql://postgres:OAkhan234@localhost:5432/ai_api_builder

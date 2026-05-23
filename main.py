@@ -32,7 +32,6 @@ Base.metadata.create_all(bind=engine)
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
@@ -40,7 +39,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "status": "error",
             "message": "Validation failed",
-            "details": exc.errors()
+            "details": str(exc.errors())
         }
     )
 
