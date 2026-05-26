@@ -31,3 +31,6 @@ uvicorn main:app --reload
 - GET/PUT/DELETE /api/users/{id}
 - GET /api/profile
 - GET /api/me
+
+## LIVE API
+https://aiapibuilder-production.up.railway.app/docs
