@@ -1,12 +1,12 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
+from sqlalchemy.orm import declarative_base
 
 load_dotenv()
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL") or "postgresql://postgres:OAkhan234@localhost:5432/ai_api_builder"
 
 engine = create_engine(DATABASE_URL)
 

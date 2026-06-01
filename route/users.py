@@ -16,14 +16,14 @@ pwd_context = CryptContext(
 )
 
 @router.get("/users")
-def home():
+async def home():
     return {"message": "AI API Builder Backend Running"}
 
 
 #db must be a PARAMETER, not inside the body
 
 @router.post("/users")
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(
         User.email == user.email
     ).first()
@@ -47,12 +47,12 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.get(path='/users', response_model=list[UserResponse])
-def get_users(db: Session = Depends(get_db)):   #  added Session type
+async def get_users(db: Session = Depends(get_db)):   #  added Session type
     users = db.query(User).all()
     return users
 
 @router.get("/users/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+async def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -62,7 +62,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/users/{user_id}", response_model=UserResponse)
-def update_user(
+async def update_user(
     user_id: int,
     updated_data: UserUpdate,
     db: Session = Depends(get_db),
@@ -81,7 +81,7 @@ def update_user(
     return user
 
 @router.delete("/users/{user_id}")
-def delete_user(
+async def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
