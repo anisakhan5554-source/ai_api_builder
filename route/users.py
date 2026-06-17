@@ -22,7 +22,7 @@ async def home():
 
 #db must be a PARAMETER, not inside the body
 
-@router.post("/users")
+@router.post("/generate-api")
 async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(
         User.email == user.email
