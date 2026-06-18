@@ -12,7 +12,6 @@ def get_groq_client():
     global _groq_client
     if _groq_client is None:
         api_key = os.environ.get("GROQ_API_KEY")
-        print("RAILWAY GROQ KEY:", repr(api_key))
         _groq_client = Groq(api_key=api_key)
     return _groq_client
 

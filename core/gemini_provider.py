@@ -4,7 +4,6 @@ from google import genai
 from core.ai_provider import AIProvider
 
 load_dotenv()
-print("GEMINI KEY:", os.environ.get("GEMINI_API_KEY"))
 
 _client = None
 
