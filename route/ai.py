@@ -1,3 +1,5 @@
+from datetime import datetime,date
+from sqlalchemy import  func
 from fastapi import HTTPException
 from fastapi.responses import  Response
 from fastapi import APIRouter, Depends
@@ -94,3 +96,33 @@ async def export_generated_code(
             "Content-Disposition": f"attachment; filename=generated_api_{generation_id}.py"
         }
     )
+
+@router.get("/ai/stats")
+async def get_stats(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    total_generations = db.query(GeneratedAPI).filter(
+        GeneratedAPI.user_id == current_user.id
+    ).count()
+
+    today = date.today()
+    generated_today = db.query(GeneratedAPI).filter(
+        GeneratedAPI.user_id == current_user.id,
+        func.date(GeneratedAPI.created_at) == today
+    ).count()
+
+    favorite_provider_result = db.query(
+        GeneratedAPI.provider,
+        func.count(GeneratedAPI.provider).label("count")
+    ).filter(
+        GeneratedAPI.user_id == current_user.id
+    ).group_by(GeneratedAPI.provider).order_by(func.count(GeneratedAPI.provider).desc()).first()
+
+    favorite_provider = favorite_provider_result[0] if favorite_provider_result else None
+
+    return {
+        "total_generations": total_generations,
+        "generated_today": generated_today,
+        "favorite_provider": favorite_provider
+    }
