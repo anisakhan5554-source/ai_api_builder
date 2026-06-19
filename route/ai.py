@@ -130,3 +130,13 @@ async def get_stats(
         "generated_today": generated_today,
         "favorite_provider": favorite_provider
     }
+
+@router.get("/ai/templates")
+async def get_templates():
+    templates = [
+        {"name": "CRUD API", "description": "Create a CRUD API for managing items with create, read, update, and delete endpoints"},
+        {"name": "Authentication API", "description": "Create a user authentication API with register, login, and JWT token endpoints"},
+        {"name": "E-commerce API", "description": "Create an e-commerce API with product listing, cart, and order endpoints"},
+        {"name": "Blog API", "description": "Create a blog API with endpoints for posts, comments, and categories"}
+    ]
+    return {"templates": templates}
