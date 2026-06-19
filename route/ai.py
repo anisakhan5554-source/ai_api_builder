@@ -1,3 +1,5 @@
+from  core.limiter import limiter
+from fastapi import Request
 from datetime import datetime,date
 from sqlalchemy import  func
 from fastapi import HTTPException
@@ -17,19 +19,21 @@ class AIRequest(BaseModel):
     provider: str = "groq"
 
 @router.post("/ai/generate")
+@limiter.limit("5/minute")
 async def generate_api(
-    request: AIRequest,
+    request: Request,
+    ai_request: AIRequest,
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    provider = get_ai_provider(request.provider)
-    result = await provider.generate_code(request.description)
+    provider = get_ai_provider(ai_request.provider)
+    result = await provider.generate_code(ai_request.description)
 
     saved_record = GeneratedAPI(
         user_id=current_user.id,
-        prompt=request.description,
+        prompt=ai_request.description,
         generated_code=result,
-        provider=request.provider
+        provider=ai_request.provider
     )
     db.add(saved_record)
     db.commit()
@@ -37,7 +41,7 @@ async def generate_api(
 
     return {
         "status": "success",
-        "provider": request.provider,
+        "provider": ai_request.provider,
         "generated_code": result,
         "saved_id": saved_record.id
     }
