@@ -1,3 +1,5 @@
+from fastapi import HTTPException
+from fastapi.responses import  Response
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -71,3 +73,24 @@ async def get_history(
             for r in records
         ]
     }
+@router.get("/ai/export/{generation_id}")
+async def export_generated_code(
+    generation_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    record = db.query(GeneratedAPI).filter(
+        GeneratedAPI.id == generation_id,
+        GeneratedAPI.user_id == current_user.id
+    ).first()
+
+    if not record:
+        raise HTTPException(status_code=404, detail="Generation not found")
+
+    return Response(
+        content=record.generated_code,
+        media_type="text/x-python",
+        headers={
+            "Content-Disposition": f"attachment; filename=generated_api_{generation_id}.py"
+        }
+    )
