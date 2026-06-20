@@ -40,6 +40,12 @@ class GroqProvider(AIProvider):
         return await self.generate(prompt)
 
     async def generate_api_schema(self, description: str) -> dict:
-        prompt = f"Generate a JSON schema for an API that: {description}. Return only valid JSON."
+        prompt = f"""Generate a valid OpenAPI 3.0 specification in JSON format for an API that: {description}
+
+    Requirements:
+    - Follow OpenAPI 3.0 structure exactly (openapi, info, paths, components)
+    - Include realistic paths, methods, request bodies, and response schemas
+    - Return only the raw JSON, no markdown, no explanation, no code fences"""
+
         result = await self.generate(prompt)
-        return {"schema": result}
+        return {"openapi_spec": result}

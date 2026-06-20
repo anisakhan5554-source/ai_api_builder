@@ -90,14 +90,27 @@ async def generate_api(
 @router.post("/ai/schema")
 async def generate_schema(
     request: AIRequest,
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     provider = get_ai_provider(request.provider)
     result = await provider.generate_api_schema(request.description)
+
+    saved_record = GeneratedAPI(
+        user_id=current_user.id,
+        prompt=request.description,
+        generated_code=result.get("openapi_spec", ""),
+        provider=request.provider
+    )
+    db.add(saved_record)
+    db.commit()
+    db.refresh(saved_record)
+
     return {
         "status": "success",
         "provider": request.provider,
-        "schema": result
+        "openapi_spec": result.get("openapi_spec"),
+        "saved_id": saved_record.id
     }
 
 @router.get("/ai/history")
