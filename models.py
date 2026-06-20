@@ -22,5 +22,6 @@ class GeneratedAPI(Base):
     prompt = Column(Text)
     generated_code = Column(Text)
     provider = Column(String)
+    parent_id = Column(Integer, ForeignKey("generated_apis.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User")

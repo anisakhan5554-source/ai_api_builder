@@ -11,12 +11,51 @@ from core.ai_factory import get_ai_provider
 from dependencies.auth import get_current_user
 from database import get_db
 from models import GeneratedAPI
+from typing import Optional
+
 
 router = APIRouter(tags=["AI"])
+
 
 class AIRequest(BaseModel):
     description: str
     provider: str = "groq"
+    parent_id: Optional[int] = None
+
+@router.get("/ai/versions/{generation_id}")
+async def get_versions(
+    generation_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    original = db.query(GeneratedAPI).filter(
+        GeneratedAPI.id == generation_id,
+        GeneratedAPI.user_id == current_user.id
+    ).first()
+
+    if not original:
+        raise HTTPException(status_code=404, detail="Generation not found")
+
+    versions = db.query(GeneratedAPI).filter(
+        GeneratedAPI.parent_id == generation_id,
+        GeneratedAPI.user_id == current_user.id
+    ).all()
+
+    return {
+        "original": {
+            "id": original.id,
+            "prompt": original.prompt,
+            "created_at": original.created_at
+        },
+        "versions": [
+            {
+                "id": v.id,
+                "prompt": v.prompt,
+                "created_at": v.created_at
+            }
+            for v in versions
+        ]
+    }
 
 @router.post("/ai/generate")
 @limiter.limit("5/minute")
@@ -33,7 +72,8 @@ async def generate_api(
         user_id=current_user.id,
         prompt=ai_request.description,
         generated_code=result,
-        provider=ai_request.provider
+        provider=ai_request.provider,
+        parent_id=ai_request.parent_id
     )
     db.add(saved_record)
     db.commit()
@@ -43,7 +83,8 @@ async def generate_api(
         "status": "success",
         "provider": ai_request.provider,
         "generated_code": result,
-        "saved_id": saved_record.id
+        "saved_id": saved_record.id,
+        "parent_id": saved_record.parent_id
     }
 
 @router.post("/ai/schema")
