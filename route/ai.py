@@ -12,7 +12,7 @@ from dependencies.auth import get_current_user
 from database import get_db
 from models import GeneratedAPI
 from typing import Optional
-
+from core.redis_client import redis_client
 
 router = APIRouter(tags=["AI"])
 
@@ -65,8 +65,18 @@ async def generate_api(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    provider = get_ai_provider(ai_request.provider)
-    result = await provider.generate_code(ai_request.description)
+    cache_key = f"ai_generate:{ai_request.provider}:{ai_request.description}"
+
+    cached_result = redis_client.get(cache_key)
+
+    if cached_result:
+        result = cached_result
+        from_cache = True
+    else:
+        provider = get_ai_provider(ai_request.provider)
+        result = await provider.generate_code(ai_request.description)
+        redis_client.set(cache_key, result)
+        from_cache = False
 
     saved_record = GeneratedAPI(
         user_id=current_user.id,
@@ -84,7 +94,8 @@ async def generate_api(
         "provider": ai_request.provider,
         "generated_code": result,
         "saved_id": saved_record.id,
-        "parent_id": saved_record.parent_id
+        "parent_id": saved_record.parent_id,
+        "from_cache": from_cache
     }
 
 @router.post("/ai/schema")
