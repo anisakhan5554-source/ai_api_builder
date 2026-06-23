@@ -67,7 +67,10 @@ async def generate_api(
 ):
     cache_key = f"ai_generate:{ai_request.provider}:{ai_request.description}"
 
-    cached_result = redis_client.get(cache_key)
+    try:
+        cached_result = redis_client.get(cache_key)
+    except Exception:
+        cached_result = None
 
     if cached_result:
         result = cached_result
@@ -75,7 +78,10 @@ async def generate_api(
     else:
         provider = get_ai_provider(ai_request.provider)
         result = await provider.generate_code(ai_request.description)
-        redis_client.set(cache_key, result)
+        try:
+            redis_client.set(cache_key, result)
+        except Exception:
+            pass
         from_cache = False
 
     saved_record = GeneratedAPI(
