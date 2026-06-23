@@ -4,7 +4,7 @@ from datetime import datetime,date
 from sqlalchemy import  func
 from fastapi import HTTPException
 from fastapi.responses import  Response
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends , BackgroundTasks
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from core.ai_factory import get_ai_provider
@@ -13,7 +13,6 @@ from database import get_db
 from models import GeneratedAPI
 from typing import Optional
 from core.redis_client import redis_client
-
 router = APIRouter(tags=["AI"])
 
 
@@ -62,6 +61,7 @@ async def get_versions(
 async def generate_api(
     request: Request,
     ai_request: AIRequest,
+    background_tasks: BackgroundTasks,
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -73,35 +73,41 @@ async def generate_api(
         cached_result = None
 
     if cached_result:
-        result = cached_result
-        from_cache = True
-    else:
-        provider = get_ai_provider(ai_request.provider)
-        result = await provider.generate_code(ai_request.description)
-        try:
-            redis_client.set(cache_key, result)
-        except Exception:
-            pass
-        from_cache = False
+        return {
+            "status": "success",
+            "provider": ai_request.provider,
+            "generated_code": cached_result,
+            "from_cache": True
+        }
 
-    saved_record = GeneratedAPI(
-        user_id=current_user.id,
-        prompt=ai_request.description,
-        generated_code=result,
-        provider=ai_request.provider,
-        parent_id=ai_request.parent_id
-    )
-    db.add(saved_record)
-    db.commit()
-    db.refresh(saved_record)
+    provider = get_ai_provider(ai_request.provider)
+    result = await provider.generate_code(ai_request.description)
+
+    try:
+        redis_client.set(cache_key, result)
+    except Exception:
+        pass
+
+    def save_to_db():
+        saved_record = GeneratedAPI(
+            user_id=current_user.id,
+            prompt=ai_request.description,
+            generated_code=result,
+            provider=ai_request.provider,
+            parent_id=ai_request.parent_id
+        )
+        db.add(saved_record)
+        db.commit()
+        db.refresh(saved_record)
+
+    background_tasks.add_task(save_to_db)
 
     return {
         "status": "success",
         "provider": ai_request.provider,
         "generated_code": result,
-        "saved_id": saved_record.id,
-        "parent_id": saved_record.parent_id,
-        "from_cache": from_cache
+        "from_cache": False,
+        "message": "Generation complete, saving in background"
     }
 
 @router.post("/ai/schema")
