@@ -4,6 +4,7 @@ from sqlalchemy import pool
 from sqlalchemy import create_engine
 from alembic import context
 from models import Base
+import os
 
 config = context.config
 if config.config_file_name is not None:
@@ -11,7 +12,7 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-DATABASE_URL = "postgresql://postgres:OAkhan234@localhost:5432/ai_api_builder"
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:OAkhan234@localhost:5432/ai_api_builder")
 
 def run_migrations_offline():
     context.configure(
