@@ -162,12 +162,29 @@ async def generate_schema(
 @router.get("/ai/history")
 async def get_history(
     current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    page: int = 1,
+    limit: int = 10,
+    search: str = None
 ):
-    records = db.query(GeneratedAPI).filter(GeneratedAPI.user_id == current_user.id).all()
+    query = db.query(GeneratedAPI).filter(
+        GeneratedAPI.user_id == current_user.id
+    )
+
+    if search:
+        query = query.filter(
+            GeneratedAPI.prompt.ilike(f"%{search}%")
+        )
+
+    total = query.count()
+    records = query.order_by(GeneratedAPI.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+
     return {
         "status": "success",
-        "count": len(records),
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "pages": (total + limit - 1) // limit,
         "history": [
             {
                 "id": r.id,
