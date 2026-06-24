@@ -80,8 +80,14 @@ async def generate_api(
             "from_cache": True
         }
 
-    provider = get_ai_provider(ai_request.provider)
-    result = await provider.generate_code(ai_request.description)
+    try:
+        provider = get_ai_provider(ai_request.provider)
+        result = await provider.generate_code(ai_request.description)
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI provider unavailable. Please try again later."
+        )
 
     try:
         redis_client.set(cache_key, result)
@@ -116,8 +122,14 @@ async def generate_schema(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    provider = get_ai_provider(request.provider)
-    result = await provider.generate_api_schema(request.description)
+    try:
+        provider = get_ai_provider(request.provider)
+        result = await provider.generate_api_schema(request.description)
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="AI provider unavailable. Please try again later."
+        )
 
     saved_record = GeneratedAPI(
         user_id=current_user.id,
