@@ -84,9 +84,14 @@ async def generate_api(
         provider = get_ai_provider(ai_request.provider)
         result = await provider.generate_code(ai_request.description)
     except Exception as e:
+        print(f"AI provider error: {str(e)}")
         raise HTTPException(
             status_code=503,
-            detail=f"AI provider unavailable. Please try again later."
+            detail={
+                "status": "error",
+                "provider": ai_request.provider,
+                "message": "AI provider temporarily unavailable. Please try again later."
+            }
         )
 
     try:
@@ -122,13 +127,19 @@ async def generate_schema(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+
     try:
         provider = get_ai_provider(request.provider)
         result = await provider.generate_api_schema(request.description)
-    except Exception:
+    except Exception as e:
+        print(f"AI provider error: {str(e)}")
         raise HTTPException(
             status_code=503,
-            detail="AI provider unavailable. Please try again later."
+            detail={
+                "status": "error",
+                "provider": request.provider,
+                "message": "AI provider temporarily unavailable. Please try again later."
+            }
         )
 
     saved_record = GeneratedAPI(
