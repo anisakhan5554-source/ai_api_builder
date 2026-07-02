@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -24,4 +24,5 @@ class GeneratedAPI(Base):
     provider = Column(String)
     parent_id = Column(Integer, ForeignKey("generated_apis.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    is_deleted = Column(Boolean, default=False)
     user = relationship("User")

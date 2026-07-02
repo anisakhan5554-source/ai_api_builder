@@ -13,6 +13,7 @@ from database import get_db
 from models import GeneratedAPI
 from typing import Optional
 from core.redis_client import redis_client
+from sqlalchemy import  func,or_
 router = APIRouter(tags=["AI"])
 
 
@@ -168,7 +169,8 @@ async def get_history(
     search: str = None
 ):
     query = db.query(GeneratedAPI).filter(
-        GeneratedAPI.user_id == current_user.id
+        GeneratedAPI.user_id == current_user.id,
+        or_(GeneratedAPI.is_deleted == False, GeneratedAPI.is_deleted == None)
     )
 
     if search:
@@ -196,6 +198,28 @@ async def get_history(
             for r in records
         ]
     }
+@router.delete("/ai/history/{generation_id}")
+async def delete_generation(
+    generation_id: int,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    record = db.query(GeneratedAPI).filter(
+        GeneratedAPI.id == generation_id,
+        GeneratedAPI.user_id == current_user.id
+    ).first()
+
+    if not record:
+        raise HTTPException(status_code=404, detail="Generation not found")
+
+    record.is_deleted = True
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Generation {generation_id} deleted"
+    }
+
 @router.get("/ai/export/{generation_id}")
 async def export_generated_code(
     generation_id: int,
