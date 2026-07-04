@@ -12,7 +12,7 @@ from dependencies.auth import get_current_user
 from database import get_db
 from models import GeneratedAPI
 from typing import Optional
-from core.redis_client import redis_client
+from core.redis_client import  get_redis_client
 import os
 from sqlalchemy import  func,or_
 router = APIRouter(tags=["AI"])
@@ -70,7 +70,7 @@ async def generate_api(
     cache_key = f"ai_generate:{ai_request.provider}:{ai_request.description}"
 
     try:
-        cached_result = redis_client.get(cache_key)
+        cached_result = get_redis_client.get(cache_key)
     except Exception:
         cached_result = None
 
@@ -97,7 +97,7 @@ async def generate_api(
         )
 
     try:
-        redis_client.set(cache_key, result)
+        get_redis_client().set(cache_key, result)
     except Exception:
         pass
 
@@ -295,7 +295,7 @@ async def health_check(db: Session = Depends(get_db)):
 
     # Check Redis
     try:
-        redis_client.ping()
+        get_redis_client().ping()
         redis_status = "connected"
     except Exception:
         redis_status = "disconnected"
@@ -314,7 +314,7 @@ async def debug_env():
     redis_token = os.environ.get("REDIS_TOKEN", "")
 
     try:
-        redis_client.ping()
+        get_redis_client.ping()
         redis_status = "connected"
     except Exception as e:
         redis_status = f"failed: {str(e)}"
