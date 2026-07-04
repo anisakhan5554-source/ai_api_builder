@@ -1,3 +1,4 @@
+from ZConfig.components.logger import logger
 from fastapi import FastAPI
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -11,8 +12,42 @@ from fastapi.responses import JSONResponse
 from  fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from route.ai import router as ai_router
+from contextlib import asynccontextmanager
+import  os
+import  logging
+logger =logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    required_vars = [
+        "DATABASE_URL",
+        "SECRET_KEY",
+        "GROQ_API_KEY",
+        "REDIS_URL",
+        "REDIS_TOKEN"
+    ]
+    missing = []
+    for var in required_vars:
+        if not os.environ.get(var):
+            missing.append(var)
+
+    if missing:
+        logger.warning(f"Missing environment variables: {missing}")
+    else:
+        logger.info("All required environment variables are set")
+
+    yield
+    # Shutdown (nothing needed here for now)
+
+app = FastAPI(lifespan=lifespan)
+
+
+
+
 origins = [
     "http://localhost:3000",
     "http://localhost:8000",
