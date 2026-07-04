@@ -308,23 +308,3 @@ async def health_check(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/debug/env")
-async def debug_env():
-    redis_url = os.environ.get("REDIS_URL", "")
-    redis_token = os.environ.get("REDIS_TOKEN", "")
-
-    try:
-        get_redis_client().ping()
-        redis_status = "connected"
-    except Exception as e:
-        redis_status = f"failed: {str(e)}"
-
-    return {
-        "REDIS_URL_length": len(redis_url),
-        "REDIS_URL_starts_with": redis_url[:50] if redis_url else "EMPTY",
-        "REDIS_TOKEN_length": len(redis_token),
-        "REDIS_TOKEN_exists": bool(redis_token),
-        "REDIS_TOKEN_first_5": redis_token[:5] if redis_token else "EMPTY",
-        "REDIS_TOKEN_last_5": redis_token[-5:] if redis_token else "EMPTY",
-        "redis_ping": redis_status
-    }
