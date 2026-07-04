@@ -13,6 +13,7 @@ from database import get_db
 from models import GeneratedAPI
 from typing import Optional
 from core.redis_client import redis_client
+import os
 from sqlalchemy import  func,or_
 router = APIRouter(tags=["AI"])
 
@@ -304,4 +305,12 @@ async def health_check(db: Session = Depends(get_db)):
         "database": db_status,
         "redis": redis_status,
         "ai_provider": "groq"
+    }
+
+
+@router.get("/debug/env")
+async def debug_env():
+    return {
+        "REDIS_URL": repr(os.environ.get("REDIS_URL")),
+        "REDIS_TOKEN": repr(os.environ.get("REDIS_TOKEN")),
     }
