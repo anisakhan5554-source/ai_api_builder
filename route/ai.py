@@ -310,7 +310,11 @@ async def health_check(db: Session = Depends(get_db)):
 
 @router.get("/debug/env")
 async def debug_env():
+    redis_url = os.environ.get("REDIS_URL", "")
+    redis_token = os.environ.get("REDIS_TOKEN", "")
     return {
-        "REDIS_URL": repr(os.environ.get("REDIS_URL")),
-        "REDIS_TOKEN": repr(os.environ.get("REDIS_TOKEN")),
+        "REDIS_URL_length": len(redis_url),
+        "REDIS_URL_starts_with": redis_url[:8] if redis_url else "EMPTY",
+        "REDIS_TOKEN_length": len(redis_token),
+        "REDIS_TOKEN_exists": bool(redis_token)
     }
