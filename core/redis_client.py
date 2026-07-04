@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from upstash_redis import Redis
+import redis
 
 load_dotenv()
 
@@ -9,7 +9,6 @@ _redis_client = None
 def get_redis_client():
     global _redis_client
     if _redis_client is None:
-        url = os.environ.get("REDIS_URL")
-        token = os.environ.get("REDIS_TOKEN")
-        _redis_client = Redis(url=url, token=token)
+        redis_url = os.environ.get("REDIS_URL")
+        _redis_client = redis.from_url(redis_url, ssl_cert_reqs=None)
     return _redis_client
