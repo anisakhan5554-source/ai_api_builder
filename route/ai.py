@@ -321,7 +321,7 @@ async def debug_env():
 
     return {
         "REDIS_URL_length": len(redis_url),
-        "REDIS_URL_starts_with": redis_url[:20] if redis_url else "EMPTY",
+        "REDIS_URL_starts_with": redis_url[:50] if redis_url else "EMPTY",
         "REDIS_TOKEN_length": len(redis_token),
         "REDIS_TOKEN_exists": bool(redis_token),
         "redis_ping": redis_status
