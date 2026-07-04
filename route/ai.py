@@ -1,7 +1,7 @@
 from  core.limiter import limiter
 from fastapi import Request
 from datetime import datetime,date
-from sqlalchemy import  func
+from sqlalchemy import  func , or_, text
 from fastapi import HTTPException
 from fastapi.responses import  Response
 from fastapi import APIRouter, Depends , BackgroundTasks
@@ -281,3 +281,27 @@ async def get_templates():
         {"name": "Blog API", "description": "Create a blog API with endpoints for posts, comments, and categories"}
     ]
     return {"templates": templates}
+
+
+@router.get("/health")
+async def health_check(db: Session = Depends(get_db)):
+    # Check database
+    try:
+        db.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        db_status = "disconnected"
+
+    # Check Redis
+    try:
+        redis_client.ping()
+        redis_status = "connected"
+    except Exception:
+        redis_status = "disconnected"
+
+    return {
+        "status": "healthy",
+        "database": db_status,
+        "redis": redis_status,
+        "ai_provider": "groq"
+    }

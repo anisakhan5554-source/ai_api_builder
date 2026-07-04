@@ -1,7 +1,7 @@
 # # AI API Builder
 
 A production-ready AI-powered REST API built with FastAPI and Python.
-Generate, save, version, and export FastAPI code using AI — all through a single API.
+Generate, save, version, and export FastAPI code using AI all through a single API.
 
 ## Live API
 https://aiapibuilder-production.up.railway.app/docs
