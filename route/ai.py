@@ -12,7 +12,7 @@ from dependencies.auth import get_current_user
 from database import get_db
 from models import GeneratedAPI
 from typing import Optional
-from core.redis_client import  get_redis_client
+from core.redis_client import get_redis_client
 import os
 from sqlalchemy import  func,or_
 router = APIRouter(tags=["AI"])
@@ -314,7 +314,7 @@ async def debug_env():
     redis_token = os.environ.get("REDIS_TOKEN", "")
 
     try:
-        get_redis_client.ping()
+        get_redis_client().ping()
         redis_status = "connected"
     except Exception as e:
         redis_status = f"failed: {str(e)}"
