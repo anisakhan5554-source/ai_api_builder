@@ -43,7 +43,29 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown (nothing needed here for now)
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title="AI API Builder",
+    description="""
+## AI-Powered API Generator
+
+Generate, save, version, and export FastAPI code using AI.
+
+### Features
+- 🤖 AI code generation using Groq (Llama 3.3)
+- 💾 Save and version generated APIs
+- 📤 Export generated code as .py files
+- 📊 Dashboard stats and history
+- 🔐 JWT Authentication with RBAC
+- ⚡ Redis caching for fast responses
+- 🚀 Production-ready with Railway deployment
+    """,
+    version="1.0.0",
+    contact={
+        "name": "Anisa Khan",
+        "url": "https://github.com/anisakhan5554-source/ai_api_builder"
+    }
+)
 
 
 

@@ -1,6 +1,6 @@
 # # AI API Builder
 
-A production-ready AI-powered REST API built with FastAPI and Python.
+A production ready AI powered REST API built with FastAPI and Python.
 Generate, save, version, and export FastAPI code using AI all through a single API.
 
 ## Live API
@@ -45,6 +45,15 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 
 ## API Endpoints
+
+## How to Test Live API
+
+1. Open [Live API](https://aiapibuilder-production.up.railway.app/docs)
+2. Create a user via POST /api/v1/generate-api
+3. Login via POST /api/v1/login copy the token from response
+4. Click *Authorize* button (top right in Swagger)
+5. Paste your token as: Bearer your_token_here
+6. Now test any AI endpoint!
 
 ### Auth
 - POST /api/v1/login
