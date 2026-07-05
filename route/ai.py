@@ -363,3 +363,67 @@ async def get_usage(
         "avg_response_time": round(avg_response_time, 3),
         "provider_usage": provider_usage
     }
+
+class EditRequest(BaseModel):
+    generation_id: int
+    instruction: str
+    provider: str = "groq"
+
+@router.post("/ai/edit")
+async def edit_generated_api(
+    edit_request: EditRequest,
+    background_tasks: BackgroundTasks,
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    original = db.query(GeneratedAPI).filter(
+        GeneratedAPI.id == edit_request.generation_id,
+        GeneratedAPI.user_id == current_user.id
+    ).first()
+
+    if not original:
+        raise HTTPException(status_code=404, detail="Generation not found")
+
+    try:
+        provider = get_ai_provider(edit_request.provider)
+        prompt = f"""Here is an existing FastAPI route:
+
+{original.generated_code}
+
+Please modify it according to this instruction: {edit_request.instruction}
+
+Return only the modified Python code, no explanation."""
+
+        result = await provider.generate(prompt)
+    except Exception as e:
+        print(f"AI provider error: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "error",
+                "provider": edit_request.provider,
+                "message": "AI provider temporarily unavailable. Please try again later."
+            }
+        )
+
+    def save_edited():
+        edited_record = GeneratedAPI(
+            user_id=current_user.id,
+            prompt=f"EDIT: {edit_request.instruction}",
+            generated_code=result,
+            provider=edit_request.provider,
+            parent_id=edit_request.generation_id
+        )
+        db.add(edited_record)
+        db.commit()
+
+    background_tasks.add_task(save_edited)
+
+    return {
+        "status": "success",
+        "provider": edit_request.provider,
+        "original_id": edit_request.generation_id,
+        "instruction": edit_request.instruction,
+        "edited_code": result,
+        "message": "Edit complete, saving as new version in background"
+    }
