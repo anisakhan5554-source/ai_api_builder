@@ -384,13 +384,34 @@ async def edit_generated_api(
     if not original:
         raise HTTPException(status_code=404, detail="Generation not found")
 
+    # Build conversation history by walking up the version chain
+    history = []
+    current = original
+    while current:
+        history.insert(0, current)
+        if current.parent_id:
+            current = db.query(GeneratedAPI).filter(
+                GeneratedAPI.id == current.parent_id
+            ).first()
+        else:
+            break
+
+    # Build context from history
+    context = ""
+    for i, record in enumerate(history):
+        if i == 0:
+            context += f"Original code:\n{record.generated_code}\n\n"
+        else:
+            instruction = record.prompt.replace("EDIT: ", "")
+            context += f"After edit '{instruction}':\n{record.generated_code}\n\n"
+
     try:
         provider = get_ai_provider(edit_request.provider)
-        prompt = f"""Here is an existing FastAPI route:
+        prompt = f"""Here is the complete history of this API and all its edits:
 
-{original.generated_code}
+{context}
 
-Please modify it according to this instruction: {edit_request.instruction}
+Now apply this new instruction to the LATEST version: {edit_request.instruction}
 
 Return only the modified Python code, no explanation."""
 
@@ -425,5 +446,7 @@ Return only the modified Python code, no explanation."""
         "original_id": edit_request.generation_id,
         "instruction": edit_request.instruction,
         "edited_code": result,
-        "message": "Edit complete, saving as new version in background"
+        "context_versions": len(history),
+        "message": "Edit complete with full conversation memory"
     }
+
