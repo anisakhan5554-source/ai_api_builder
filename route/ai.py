@@ -1,7 +1,6 @@
 from  core.limiter import limiter
 from fastapi import Request
 from datetime import datetime,date
-from sqlalchemy import  func , or_, text
 from fastapi import HTTPException
 from fastapi.responses import  Response
 from fastapi import APIRouter, Depends , BackgroundTasks
@@ -14,7 +13,8 @@ from models import GeneratedAPI
 from typing import Optional
 from core.redis_client import get_redis_client
 import os
-from sqlalchemy import  func,or_
+from sqlalchemy import  func,or_, text
+from models import GeneratedAPI,AIUsageLog
 router = APIRouter(tags=["AI"])
 
 
@@ -67,14 +67,32 @@ async def generate_api(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    import time
+    start_time = time.time()
+
     cache_key = f"ai_generate:{ai_request.provider}:{ai_request.description}"
 
     try:
-        cached_result = get_redis_client.get(cache_key)
+        cached_result = get_redis_client().get(cache_key)
     except Exception:
         cached_result = None
 
     if cached_result:
+        response_time = time.time() - start_time
+
+        def log_cache_hit():
+            log = AIUsageLog(
+                user_id=current_user.id,
+                provider=ai_request.provider,
+                prompt=ai_request.description,
+                response_time=response_time,
+                from_cache=True
+            )
+            db.add(log)
+            db.commit()
+
+        background_tasks.add_task(log_cache_hit)
+
         return {
             "status": "success",
             "provider": ai_request.provider,
@@ -96,6 +114,8 @@ async def generate_api(
             }
         )
 
+    response_time = time.time() - start_time
+
     try:
         get_redis_client().set(cache_key, result)
     except Exception:
@@ -113,6 +133,16 @@ async def generate_api(
         db.commit()
         db.refresh(saved_record)
 
+        log = AIUsageLog(
+            user_id=current_user.id,
+            provider=ai_request.provider,
+            prompt=ai_request.description,
+            response_time=response_time,
+            from_cache=False
+        )
+        db.add(log)
+        db.commit()
+
     background_tasks.add_task(save_to_db)
 
     return {
@@ -122,6 +152,7 @@ async def generate_api(
         "from_cache": False,
         "message": "Generation complete, saving in background"
     }
+
 
 @router.post("/ai/schema")
 async def generate_schema(
@@ -308,3 +339,27 @@ async def health_check(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/ai/usage")
+async def get_usage(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    logs = db.query(AIUsageLog).filter(
+        AIUsageLog.user_id == current_user.id
+    ).all()
+
+    total_requests = len(logs)
+    cache_hits = sum(1 for log in logs if log.from_cache)
+    avg_response_time = sum(log.response_time for log in logs) / total_requests if total_requests > 0 else 0
+
+    provider_usage = {}
+    for log in logs:
+        provider_usage[log.provider] = provider_usage.get(log.provider, 0) + 1
+
+    return {
+        "total_requests": total_requests,
+        "cache_hits": cache_hits,
+        "cache_miss": total_requests - cache_hits,
+        "avg_response_time": round(avg_response_time, 3),
+        "provider_usage": provider_usage
+    }

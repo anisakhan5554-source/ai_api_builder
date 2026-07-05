@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Boolean, Float
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -25,4 +25,17 @@ class GeneratedAPI(Base):
     parent_id = Column(Integer, ForeignKey("generated_apis.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_deleted = Column(Boolean, default=False)
+    user = relationship("User")
+
+
+class AIUsageLog(Base):
+    __tablename__ = "ai_usage_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    provider = Column(String)
+    prompt = Column(Text)
+    response_time = Column(Float)
+    from_cache = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User")
