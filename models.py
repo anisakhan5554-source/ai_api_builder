@@ -1,4 +1,6 @@
 from datetime import datetime
+
+from pydantic_core.core_schema import nullable_schema
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Boolean, Float
 from sqlalchemy.orm import relationship
 from database import Base
@@ -19,6 +21,7 @@ class GeneratedAPI(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    project_id=Column(Integer,ForeignKey("projects.id"),nullable=True)
     prompt = Column(Text)
     generated_code = Column(Text)
     provider = Column(String)
@@ -37,5 +40,16 @@ class AIUsageLog(Base):
     prompt = Column(Text)
     response_time = Column(Float)
     from_cache = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User")
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User")

@@ -22,6 +22,7 @@ class AIRequest(BaseModel):
     description: str
     provider: str = "groq"
     parent_id: Optional[int] = None
+    project_id: Optional[int]=None
 
 @router.get("/ai/versions/{generation_id}")
 async def get_versions(
@@ -127,7 +128,8 @@ async def generate_api(
             prompt=ai_request.description,
             generated_code=result,
             provider=ai_request.provider,
-            parent_id=ai_request.parent_id
+            parent_id=ai_request.parent_id,
+            project_id=ai_request.project_id
         )
         db.add(saved_record)
         db.commit()
