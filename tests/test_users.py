@@ -9,8 +9,8 @@ def test_root():
 
 def test_create_user():
     import random
-    random_email=f"test{random.randint(1,99999)}@gmail.com"
-    response = client.post("/api/users", json={
+    random_email = f"test{random.randint(1,99999)}@gmail.com"
+    response = client.post("/api/v1/generate-api", json={
         "name": "TestUser",
         "email": random_email,
         "password": "123456",
@@ -19,5 +19,5 @@ def test_create_user():
     assert response.status_code == 200
 
 def test_get_users():
-    response = client.get("/api/users")
+    response = client.get("/api/v1/users")
     assert response.status_code == 200
