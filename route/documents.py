@@ -278,3 +278,49 @@ Provide a structured analysis."""
         "filename": filename,
         "analysis": analysis
     }
+
+
+
+@router.post("/documents/generate-backend")
+async def generate_backend_from_document(
+    filename: str,
+    current_user = Depends(get_current_user),
+    provider: str = "groq"
+):
+    file_path = f"{UPLOAD_DIR}/{current_user.id}_{filename}"
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    with open(file_path, "rb") as f:
+        contents = f.read()
+
+    file_ext = os.path.splitext(filename)[1].lower()
+    extracted_text = extract_text(contents, file_ext)
+
+    prompt = f"""You are an expert FastAPI backend developer.
+
+Based on these software requirements, generate a complete FastAPI backend including:
+
+1. models.py - SQLAlchemy database models
+2. schemas.py - Pydantic schemas
+3. main.py - FastAPI app with all routes
+4. Key API endpoints with full implementation
+
+Requirements Document:
+{extracted_text[:3000]}
+
+Generate production-ready FastAPI code with proper error handling, authentication where needed, and clear comments."""
+
+    try:
+        ai_provider = get_ai_provider(provider)
+        generated_backend = await ai_provider.generate(prompt)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail="AI provider unavailable")
+
+    return {
+        "status": "success",
+        "filename": filename,
+        "generated_backend": generated_backend,
+        "message": "Complete FastAPI backend generated from your requirements"
+    }
