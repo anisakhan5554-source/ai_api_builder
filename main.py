@@ -17,6 +17,7 @@ import  os
 import  logging
 from route.projects import router as projects_router
 from route.documents import router as documents_router
+from route import rag
 
 logger =logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -96,6 +97,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(ai_router,prefix="/api/v1")
 app.include_router(projects_router,prefix="/api/v1")
 app.include_router(documents_router,prefix="/api/v1")
+app.include_router(rag.router)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

@@ -4,6 +4,8 @@ from database import get_db
 from dependencies.auth import get_current_user
 import os
 import io
+from core.vector_store import store_document ,search_documents
+from core.ai_factory import get_ai_provider
 
 router = APIRouter(tags=["Documents"])
 
@@ -117,4 +119,120 @@ async def get_documents(
         "status": "success",
         "count": len(user_files),
         "documents": user_files
+    }
+
+@router.post("/documents/process/{filename}")
+async def process_document(
+    filename: str,
+    current_user = Depends(get_current_user)
+):
+    file_path = f"{UPLOAD_DIR}/{current_user.id}_{filename}"
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    with open(file_path, "rb") as f:
+        contents = f.read()
+
+    file_ext = os.path.splitext(filename)[1].lower()
+    extracted_text = extract_text(contents, file_ext)
+
+    if not extracted_text:
+        raise HTTPException(status_code=400, detail="Could not extract text from document")
+
+    chunks_stored = store_document(
+        document_id=f"{current_user.id}_{filename}",
+        text=extracted_text,
+        metadata={
+            "user_id": str(current_user.id),
+            "filename": filename
+        }
+    )
+
+    return {
+        "status": "success",
+        "filename": filename,
+        "chunks_stored": chunks_stored,
+        "message": f"Document processed and stored {chunks_stored} chunks in vector database"
+    }
+
+
+@router.post("/documents/search")
+async def search_documents_endpoint(
+    current_user = Depends(get_current_user),
+    query: str = None,
+    n_results: int = 3
+):
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+
+    results = search_documents(
+        query=query,
+        n_results=n_results,
+        user_id=current_user.id
+    )
+
+    documents = results.get("documents", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    return {
+        "status": "success",
+        "query": query,
+        "results": [
+            {
+                "text": doc,
+                "relevance_score": round(1 - dist, 3),
+                "metadata": meta
+            }
+            for doc, dist, meta in zip(documents, distances, metadatas)
+        ]
+    }
+
+
+@router.post("/documents/chat")
+async def chat_with_document(
+    current_user = Depends(get_current_user),
+    query: str = None,
+    provider: str = "groq"
+):
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+
+    # Step 1 — retrieve relevant chunks
+    results = search_documents(
+        query=query,
+        n_results=3,
+        user_id=current_user.id
+    )
+
+    documents = results.get("documents", [[]])[0]
+
+    if not documents:
+        raise HTTPException(status_code=404, detail="No relevant documents found")
+
+    # Step 2 — build context from chunks
+    context = "\n\n".join(documents)
+
+    # Step 3 — ask AI with context
+    prompt = f"""You are a helpful assistant. Answer the question based on the context provided.
+
+Context from documents:
+{context}
+
+Question: {query}
+
+Answer based only on the context above. If the answer is not in the context, say so."""
+
+    try:
+        ai_provider = get_ai_provider(provider)
+        answer = await ai_provider.generate(prompt)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail="AI provider unavailable")
+
+    return {
+        "status": "success",
+        "query": query,
+        "answer": answer,
+        "sources_used": len(documents)
     }

@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
     def password_strength(cls, v):
         if len(v) < 6:
             raise ValueError("Password must be at least 6 characters")
-        return v 
+        return v
 
     @field_validator("name")
     def name_not_empty(cls, v):
@@ -34,3 +34,7 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     name: str
     email: EmailStr
+
+
+class QuestionRequest(BaseModel):
+    question: str
