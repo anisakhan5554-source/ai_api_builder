@@ -6,6 +6,7 @@ import os
 import io
 from core.vector_store import store_document ,search_documents
 from core.ai_factory import get_ai_provider
+from pydantic import  BaseModel
 
 router = APIRouter(tags=["Documents"])
 
@@ -368,4 +369,50 @@ Return only valid OpenAPI 3.0 JSON, no explanation."""
         "filename": filename,
         "api_specification": api_spec,
         "message": "OpenAPI specification generated from requirements"
+    }
+
+class CodeReviewRequest(BaseModel):
+    code: str
+    language: str = "python"
+    provider: str = "groq"
+
+from pydantic import BaseModel
+
+class CodeReviewRequest(BaseModel):
+    code: str
+    language: str = "python"
+    provider: str = "groq"
+
+
+
+@router.post("/documents/review-code")
+async def review_code(
+    review_request: CodeReviewRequest,
+    current_user = Depends(get_current_user)
+):
+    prompt = f"""You are an expert code reviewer. Review this {review_request.language} code and provide:
+
+1. BUGS: Any bugs or errors found
+2. SECURITY: Security vulnerabilities
+3. PERFORMANCE: Performance issues
+4. BEST PRACTICES: Violations of best practices
+5. IMPROVEMENTS: Specific improvement suggestions
+6. RATING: Overall code quality rating (1-10)
+
+Code to review:
+{review_request.code}
+
+Provide a detailed, constructive review."""
+
+    try:
+        ai_provider = get_ai_provider(review_request.provider)
+        review = await ai_provider.generate(prompt)
+    except Exception as e:
+        print(f"AI provider error:{str(e)}")
+        raise HTTPException(status_code=503, detail="AI provider unavailable")
+
+    return {
+        "status": "success",
+        "language": review_request.language,
+        "review": review
     }
