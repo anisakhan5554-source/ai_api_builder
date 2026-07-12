@@ -236,3 +236,45 @@ Answer based only on the context above. If the answer is not in the context, say
         "answer": answer,
         "sources_used": len(documents)
     }
+
+@router.post("/documents/analyze")
+async def analyze_requirements(
+    filename: str,
+    current_user = Depends(get_current_user),
+    provider: str = "groq"
+):
+    file_path = f"{UPLOAD_DIR}/{current_user.id}_{filename}"
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    with open(file_path, "rb") as f:
+        contents = f.read()
+
+    file_ext = os.path.splitext(filename)[1].lower()
+    extracted_text = extract_text(contents, file_ext)
+
+    prompt = f"""Analyze this software requirements document and extract:
+
+1. KEY FEATURES: List the main features needed
+2. DATABASE TABLES: Suggest database tables needed
+3. API ENDPOINTS: List the main API endpoints needed
+4. TECH STACK: Recommend a tech stack
+5. COMPLEXITY: Rate complexity (Low/Medium/High)
+
+Document:
+{extracted_text[:3000]}
+
+Provide a structured analysis."""
+
+    try:
+        ai_provider = get_ai_provider(provider)
+        analysis = await ai_provider.generate(prompt)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail="AI provider unavailable")
+
+    return {
+        "status": "success",
+        "filename": filename,
+        "analysis": analysis
+    }
