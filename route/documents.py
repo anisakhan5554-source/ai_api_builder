@@ -416,3 +416,39 @@ Provide a detailed, constructive review."""
         "language": review_request.language,
         "review": review
     }
+
+class DatabaseDesignRequest(BaseModel):
+    description: str
+    provider: str = "groq"
+
+@router.post("/documents/design-database")
+async def design_database(
+    db_request: DatabaseDesignRequest,
+    current_user = Depends(get_current_user)
+):
+    prompt = f"""You are an expert database architect. Design a complete database schema for:
+
+{db_request.description}
+
+Provide:
+1. TABLES: All tables with columns and data types
+2. PRIMARY KEYS: For each table
+3. FOREIGN KEYS: Relationships between tables
+4. INDEXES: Recommended indexes for performance
+5. SQLAlchemy MODELS: Complete Python SQLAlchemy model code
+6. ERD DESCRIPTION: Text description of the entity relationship diagram
+
+Make it production-ready with proper normalization."""
+
+    try:
+        ai_provider = get_ai_provider(db_request.provider)
+        design = await ai_provider.generate(prompt)
+    except Exception as e:
+        print(f"AI provider error: {str(e)}")
+        raise HTTPException(status_code=503, detail="AI provider unavailable")
+
+    return {
+        "status": "success",
+        "description": db_request.description,
+        "database_design": design
+    }
