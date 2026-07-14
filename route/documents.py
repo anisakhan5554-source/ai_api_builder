@@ -531,6 +531,82 @@ Provide a detailed technical analysis."""
         "analysis": analysis
     }
 
+class ReadmeRequest(BaseModel):
+    repo_url: str = None
+    project_description: str = None
+    tech_stack: str = None
+    provider: str = "groq"
 
+@router.post("/documents/generate-readme")
+async def generate_readme(
+    readme_request: ReadmeRequest,
+    current_user = Depends(get_current_user)
+):
+    context = ""
+
+    if readme_request.repo_url:
+        try:
+            parts = readme_request.repo_url.rstrip("/").split("/")
+            owner = parts[-2]
+            repo = parts[-1]
+
+            async with httpx.AsyncClient() as client:
+                repo_response = await client.get(
+                    f"https://api.github.com/repos/{owner}/{repo}",
+                    headers={"Accept": "application/vnd.github.v3+json"}
+                )
+                files_response = await client.get(
+                    f"https://api.github.com/repos/{owner}/{repo}/contents",
+                    headers={"Accept": "application/vnd.github.v3+json"}
+                )
+
+            repo_data = repo_response.json()
+            files_data = files_response.json() if files_response.status_code == 200 else []
+            file_list = [f["name"] for f in files_data if isinstance(files_data, list)]
+
+            context = f"""
+Repository: {repo_data.get('name')}
+Description: {repo_data.get('description', 'No description')}
+Language: {repo_data.get('language')}
+Files: {', '.join(file_list[:20])}
+"""
+        except Exception:
+            pass
+
+    if readme_request.project_description:
+        context += f"\nProject Description: {readme_request.project_description}"
+
+    if readme_request.tech_stack:
+        context += f"\nTech Stack: {readme_request.tech_stack}"
+
+    prompt = f"""Generate a professional, comprehensive README.md for this project:
+
+{context}
+
+Include:
+1. Project title and badges
+2. Description
+3. Features list
+4. Tech stack
+5. Installation instructions
+6. Usage examples
+7. API endpoints (if applicable)
+8. Contributing guidelines
+9. License section
+
+Use proper Markdown formatting. Make it professional and impressive."""
+
+    try:
+        ai_provider = get_ai_provider(readme_request.provider)
+        readme = await ai_provider.generate(prompt)
+    except Exception as e:
+        print(f"AI provider error: {str(e)}")
+        raise HTTPException(status_code=503, detail="AI provider unavailable")
+
+    return {
+        "status": "success",
+        "readme": readme,
+        "message": "README.md generated successfully"
+    }
 
 
