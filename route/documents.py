@@ -452,3 +452,85 @@ Make it production-ready with proper normalization."""
         "description": db_request.description,
         "database_design": design
     }
+
+
+
+import httpx
+
+class GitHubAnalysisRequest(BaseModel):
+    repo_url: str
+    provider: str = "groq"
+
+@router.post("/documents/analyze-github")
+async def analyze_github_repo(
+    github_request: GitHubAnalysisRequest,
+    current_user = Depends(get_current_user)
+):
+    # Extract owner and repo from URL
+    try:
+        parts = github_request.repo_url.rstrip("/").split("/")
+        owner = parts[-2]
+        repo = parts[-1]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid GitHub URL format")
+
+    # Fetch repo info from GitHub API
+    try:
+        async with httpx.AsyncClient() as client:
+            repo_response = await client.get(
+                f"https://api.github.com/repos/{owner}/{repo}",
+                headers={"Accept": "application/vnd.github.v3+json"}
+            )
+            readme_response = await client.get(
+                f"https://api.github.com/repos/{owner}/{repo}/readme",
+                headers={"Accept": "application/vnd.github.v3+json"}
+            )
+            files_response = await client.get(
+                f"https://api.github.com/repos/{owner}/{repo}/contents",
+                headers={"Accept": "application/vnd.github.v3+json"}
+            )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Could not fetch GitHub repository")
+
+    repo_data = repo_response.json()
+    files_data = files_response.json() if files_response.status_code == 200 else []
+
+    file_list = [f["name"] for f in files_data if isinstance(files_data, list)]
+
+    prompt = f"""Analyze this GitHub repository and provide:
+
+1. PROJECT OVERVIEW: What does this project do?
+2. TECH STACK: Technologies used based on files
+3. CODE QUALITY: Assessment based on structure
+4. MISSING FEATURES: What's missing?
+5. IMPROVEMENTS: Specific recommendations
+6. DOCUMENTATION: Is it well documented?
+
+Repository Info:
+Name: {repo_data.get('name', 'Unknown')}
+Description: {repo_data.get('description', 'No description')}
+Language: {repo_data.get('language', 'Unknown')}
+Stars: {repo_data.get('stargazers_count', 0)}
+Files: {', '.join(file_list[:20])}
+
+Provide a detailed technical analysis."""
+
+    try:
+        ai_provider = get_ai_provider(github_request.provider)
+        analysis = await ai_provider.generate(prompt)
+    except Exception as e:
+        print(f"AI provider error: {str(e)}")
+        raise HTTPException(status_code=503, detail="AI provider unavailable")
+
+    return {
+        "status": "success",
+        "repo_url": github_request.repo_url,
+        "repo_name": repo_data.get("name"),
+        "language": repo_data.get("language"),
+        "stars": repo_data.get("stargazers_count"),
+        "analysis": analysis
+    }
+
+
+
+
