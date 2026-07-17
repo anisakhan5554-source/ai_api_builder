@@ -2,6 +2,9 @@
 venv/
 .venv/
 _pycache_/
+*pyc
 *.db
 .idea/
 logs/app.log
+chroma_db/
+uploads/

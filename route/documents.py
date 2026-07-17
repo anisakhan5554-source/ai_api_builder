@@ -7,6 +7,9 @@ import io
 from core.vector_store import store_document ,search_documents
 from core.ai_factory import get_ai_provider
 from pydantic import  BaseModel
+import uuid
+import re
+
 
 router = APIRouter(tags=["Documents"])
 
@@ -45,6 +48,12 @@ async def upload_document(
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Sanitize filename - remove any path traversal attempts
+    safe_filename = re.sub(r'[^\w\-_\. ]', '', file.filename)
+    safe_filename = safe_filename.replace(' ', '_')
+    unique_filename = f"{current_user.id}{uuid.uuid4().hex}{safe_filename}"
+    file_path = f"{UPLOAD_DIR}/{unique_filename}"
+
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -88,18 +97,57 @@ async def extract_document_text(
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Document not found")
 
-    with open(file_path, "rb") as f:
-        contents = f.read()
+    @router.post("/documents/upload")
+    async def upload_document(
+            file: UploadFile = File(...),
+            current_user=Depends(get_current_user),
+            db: Session = Depends(get_db)
+    ):
+        # Sanitize filename - remove dangerous characters
+        safe_filename = re.sub(r"[^\w\-_. ]", "", file.filename)
+        safe_filename = safe_filename.replace(" ", "_")
 
-    file_ext = os.path.splitext(filename)[1].lower()
-    extracted_text = extract_text(contents, file_ext)
+        # Generate unique filename
+        unique_filename = f"{current_user.id}{uuid.uuid4().hex}{safe_filename}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
-    return {
-        "status": "success",
-        "filename": filename,
-        "extracted_text": extracted_text,
-        "total_characters": len(extracted_text)
-    }
+        # Validate extension
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        if file_ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File type not allowed. Allowed types: {ALLOWED_EXTENSIONS}"
+            )
+
+        # Read file
+        contents = await file.read()
+
+        # Validate file size
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail="File too large. Maximum size is 10MB"
+            )
+
+        # Save file
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        # Extract text
+        extracted_text = extract_text(contents, file_ext)
+        text_preview = extracted_text[:500] if extracted_text else ""
+
+        return {
+            "status": "success",
+            "filename": safe_filename,
+            "file_path": file_path,
+            "file_size": len(contents),
+            "file_type": file_ext,
+            "uploaded_by": current_user.id,
+            "text_extracted": bool(extracted_text),
+            "text_preview": text_preview,
+            "total_characters": len(extracted_text),
+        }
 
 @router.get("/documents")
 async def get_documents(
