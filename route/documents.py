@@ -9,6 +9,8 @@ from core.ai_factory import get_ai_provider
 from pydantic import  BaseModel
 import uuid
 import re
+from fastapi import Request
+from core.limiter import limiter
 
 
 router = APIRouter(tags=["Documents"])
@@ -98,7 +100,9 @@ async def extract_document_text(
         raise HTTPException(status_code=404, detail="Document not found")
 
     @router.post("/documents/upload")
+    @limiter.limit("10/minute")
     async def upload_document(
+            request: Request,
             file: UploadFile = File(...),
             current_user=Depends(get_current_user),
             db: Session = Depends(get_db)
@@ -171,7 +175,9 @@ async def get_documents(
     }
 
 @router.post("/documents/process/{filename}")
+@limiter.limit("5/minute")
 async def process_document(
+    request: Request,
     filename: str,
     current_user = Depends(get_current_user)
 ):
@@ -504,6 +510,7 @@ Make it production-ready with proper normalization."""
 
 
 import httpx
+from urllib.parse import urlparse
 
 class GitHubAnalysisRequest(BaseModel):
     repo_url: str
@@ -514,6 +521,13 @@ async def analyze_github_repo(
     github_request: GitHubAnalysisRequest,
     current_user = Depends(get_current_user)
 ):
+    # SSRF Protection
+    parsed = urlparse(github_request.repo_url)
+    if parsed.netloc not in ["github.com", "www.github.com"]:
+        raise HTTPException(status_code=400, detail="Only GitHub URLs allowed")
+    if parsed.scheme != "https":
+        raise HTTPException(status_code=400, detail="HTTPS URLs only")
+
     # Extract owner and repo from URL
     try:
         parts = github_request.repo_url.rstrip("/").split("/")

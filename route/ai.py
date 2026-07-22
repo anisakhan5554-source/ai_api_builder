@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from fastapi.responses import  Response
 from fastapi import APIRouter, Depends , BackgroundTasks
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel ,Field
 from core.ai_factory import get_ai_provider
 from dependencies.auth import get_current_user
 from database import get_db
@@ -19,10 +19,10 @@ router = APIRouter(tags=["AI"])
 
 
 class AIRequest(BaseModel):
-    description: str
-    provider: str = "groq"
+    description: str = Field(..., max_length=2000, min_length=10)
+    provider: str = Field(default="groq", max_length=20)
     parent_id: Optional[int] = None
-    project_id: Optional[int]=None
+    project_id: Optional[int] = None
 
 @router.get("/ai/versions/{generation_id}")
 async def get_versions(
